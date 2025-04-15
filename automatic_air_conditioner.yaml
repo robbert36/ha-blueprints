@@ -22,8 +22,9 @@ blueprint:
       description: "Select temperature entities to be used."
       selector:
         entity:
-          domain: sensor
-          device_class: temperature
+          filter:
+            - domain: sensor
+              device_class: temperature
 
     climate:
       name: Entities climate
