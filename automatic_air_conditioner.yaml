@@ -192,25 +192,21 @@ trigger:
       minutes: 5
     id: moisture_climate_off
   - platform: numeric_state
-    entity_id: !input climate
-    attribute: current_temperature
+    entity_id: !input temperature
     above: !input target_temperature_start
     id: climate_on
   - platform: numeric_state
-    entity_id: !input climate
-    attribute: current_temperature
+    entity_id: !input temperature
     below: !input target_temperature_start
     id: climate_on
   - platform: numeric_state
-    entity_id: !input climate
-    attribute: current_temperature
+    entity_id: !input temperature
     below: !input target_temperature_stop
     for:
       minutes: !input delay_temperature_stop
     id: climate_off
   - platform: numeric_state
-    entity_id: !input climate
-    attribute: current_temperature
+    entity_id: !input temperature
     above: !input target_temperature_stop
     for:
       minutes: !input delay_temperature_stop
@@ -253,8 +249,8 @@ action:
         before: !input stop_time
       - "{{ states(presence_home) == 'home' or presence_home == 'group.presence_home_disabled'}}"
       - or:
-          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window' or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Winter' and (state_attr(climate,'current_temperature')|float(0) < target_temperature_start|float(0) )}}"
-          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window'or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Summer' and (state_attr(climate,'current_temperature')|float(0) > target_temperature_start|float(0) )}}"
+          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window' or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Winter' and (states(!input temperature)|float(0) < target_temperature_start|float(0) )}}"
+          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window'or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Summer' and (states(!input temperature)|float(0) > target_temperature_start|float(0) )}}"
     then:
       - alias: Controllo finestra
         if:
@@ -275,7 +271,7 @@ action:
             type: notify
             device_id: !input notify_device
             title: "AIR CONDITIONER."
-            message: "Turn on air conditioner performed there are {{state_attr(climate,'current_temperature')|float(0)}}°"
+            message: "Turn on air conditioner performed there are {{states(!input temperature)|float(0)}}°"
         else:
           - domain: mobile_app
             type: notify
@@ -287,8 +283,8 @@ action:
       - "{{not is_state(climate,'off')}}"
       - or:
           - "{{ trigger.id == 'presence_home' and trigger.to_state.state == 'not_home'}}"
-          - "{{ trigger.id == 'climate_off' and season == 'Winter' and (state_attr(climate,'current_temperature')|float(0) > target_temperature_stop|float(0) )}}"
-          - "{{ trigger.id == 'climate_off' and season == 'Summer' and (state_attr(climate,'current_temperature')|float(0) < target_temperature_stop|float(0) )}}"
+          - "{{ trigger.id == 'climate_off' and season == 'Winter' and (states(!input temperature)|float(0) > target_temperature_stop|float(0) )}}"
+          - "{{ trigger.id == 'climate_off' and season == 'Summer' and (states(!input temperature)|float(0) < target_temperature_stop|float(0) )}}"
           - "{{ trigger.id == 'climate_off' and trigger.platform == 'time'}}"
           - "{{ trigger.id == 'window' and is_state(window,'on')}}"
           - "{{ trigger.id == 'moisture_climate_off' }}"
