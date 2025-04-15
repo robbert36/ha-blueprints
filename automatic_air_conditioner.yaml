@@ -17,6 +17,14 @@ blueprint:
 
   domain: automation
   input:
+    temperature:
+      name: Entities temperature
+      description: "Select temperature entities to be used."
+      selector:
+        entity:
+          - domain: sensor
+            device_class: temperature
+
     climate:
       name: Entities climate
       description: "Select climate entities to be used."
@@ -164,6 +172,7 @@ mode: parallel
 variables:
   season: !input season
   target_temperature_start: !input target_temperature_start
+  temperature: !input temperature
   climate: !input climate
   target_temperature_stop: !input target_temperature_stop
   window: !input window
