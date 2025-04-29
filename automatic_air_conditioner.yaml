@@ -82,13 +82,12 @@ blueprint:
             - low
             - mid
 
-    presence_home:
-      name: Presence Home
-      description: "Select the group consisting of person."
-      default: group.presence_home_disabled
+    home_modus:
+      name: Home modus
+      description: "Select an input_select helper used for presence (Home, Night, Away)."
       selector:
         entity:
-          domain: group
+          domain: input_select
 
     moisture:
       name: Water level
@@ -102,10 +101,7 @@ blueprint:
     window:
       name: Window
       default: binary_sensor.window_disabled
-      description: "Select the binary_sensor used for the window.
-
-
-        Selezionare il binary_sensor usato per la finestra. "
+      description: "Select the binary_sensor used for the window."
       selector:
         entity:
           domain: binary_sensor
@@ -177,7 +173,8 @@ variables:
   climate: !input climate
   target_temperature_stop: !input target_temperature_stop
   window: !input window
-  presence_home: !input presence_home
+  home_modus: !input home_modus
+
 trigger:
   - platform: state
     entity_id: !input moisture
@@ -223,14 +220,9 @@ trigger:
       seconds: 30
     id: window
   - platform: state
-    entity_id: !input presence_home
-    from:
-      - not_home
-      - home
-    to:
-      - not_home
-      - home
-    id: presence_home
+    entity_id: !input home_modus
+    id: home_modus
+
 action:
   - alias: Avviso tanica piena
     if:
@@ -241,20 +233,21 @@ action:
         device_id: !input notify_device
         title: "AIR CONDITIONER."
         message: "Air conditioner water discharge container full, automatic shutdown in 5 minutes."
+
   - alias: Accensione climate
     if:
       - "{{is_state(climate,'off')}}"
       - condition: time
         after: !input start_time
         before: !input stop_time
-      - "{{ states(presence_home) == 'home' or presence_home == 'group.presence_home_disabled'}}"
+      - "{{ states(home_modus) in ['Home', 'Night'] }}"
       - or:
-          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window' or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Winter' and (states(temperature)|float(0) < target_temperature_start|float(0) )}}"
-          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window'or (trigger.id == 'presence_home' and trigger.to_state.state == 'home')) and season == 'Summer' and (states(temperature)|float(0) > target_temperature_start|float(0) )}}"
+          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window' or (trigger.id == 'home_modus' and states(home_modus) in ['Home', 'Night'])) and season == 'Winter' and (states(temperature)|float(0) < target_temperature_start|float(0)) }}"
+          - "{{ (trigger.id == 'climate_on' or trigger.id == 'window' or (trigger.id == 'home_modus' and states(home_modus) in ['Home', 'Night'])) and season == 'Summer' and (states(temperature)|float(0) > target_temperature_start|float(0)) }}"
     then:
       - alias: Controllo finestra
         if:
-          - " {{ window == 'binary_sensor.window_disabled' or states(window) == 'off'}}"
+          - "{{ window == 'binary_sensor.window_disabled' or states(window) == 'off'}}"
         then:
           - service: climate.set_temperature
             data:
@@ -271,22 +264,23 @@ action:
             type: notify
             device_id: !input notify_device
             title: "AIR CONDITIONER."
-            message: "Turn on air conditioner performed there are {{states(temperature)|float(0)}}°"
+            message: "Turn on air conditioner performed — current temperature is {{states(temperature)|float(0)}}°"
         else:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
             title: "AIR CONDITIONER."
-            message: "Turning on air conditioner not performed because you left the window open."
+            message: "Turning on air conditioner not performed because the window is open."
+
   - alias: Spegni climate
     if:
-      - "{{not is_state(climate,'off')}}"
+      - "{{ not is_state(climate,'off') }}"
       - or:
-          - "{{ trigger.id == 'presence_home' and trigger.to_state.state == 'not_home'}}"
-          - "{{ trigger.id == 'climate_off' and season == 'Winter' and (states(temperature)|float(0) > target_temperature_stop|float(0) )}}"
-          - "{{ trigger.id == 'climate_off' and season == 'Summer' and (states(temperature)|float(0) < target_temperature_stop|float(0) )}}"
-          - "{{ trigger.id == 'climate_off' and trigger.platform == 'time'}}"
-          - "{{ trigger.id == 'window' and is_state(window,'on')}}"
+          - "{{ trigger.id == 'home_modus' and states(home_modus) == 'Away' }}"
+          - "{{ trigger.id == 'climate_off' and season == 'Winter' and (states(temperature)|float(0) > target_temperature_stop|float(0)) }}"
+          - "{{ trigger.id == 'climate_off' and season == 'Summer' and (states(temperature)|float(0) < target_temperature_stop|float(0)) }}"
+          - "{{ trigger.id == 'climate_off' and trigger.platform == 'time' }}"
+          - "{{ trigger.id == 'window' and is_state(window,'on') }}"
           - "{{ trigger.id == 'moisture_climate_off' }}"
     then:
       - service: climate.turn_off
@@ -296,8 +290,11 @@ action:
         type: notify
         device_id: !input notify_device
         title: "AIR CONDITIONER."
-        message:
-          "{% if trigger.id == 'window' %} Air conditioner turned off because the window was opened.
-          {% elif (trigger.id == 'climate_off' or trigger.id == 'presence_home')%} Automatic air conditioner shutdown.
-          {% elif trigger.id == 'moisture_climate_off' %} Air conditioner off for water drain container full.
-          {% endif %}"
+        message: >
+          {% if trigger.id == 'window' %}
+            Air conditioner turned off because the window was opened.
+          {% elif trigger.id in ['climate_off', 'home_modus'] %}
+            Automatic air conditioner shutdown.
+          {% elif trigger.id == 'moisture_climate_off' %}
+            Air conditioner turned off due to full water container.
+          {% endif %}
