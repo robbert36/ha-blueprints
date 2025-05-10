@@ -107,6 +107,15 @@ blueprint:
           domain: binary_sensor
           device_class: window
 
+    window_delay:
+      name: Window Delay
+      default: 120
+      description: "Delay the window has to be open to be triggered"
+      selector:
+        number:
+          min: 0
+          step: 1
+
     target_temperature_start:
       name: Target temperature start
       default: 25
@@ -173,6 +182,7 @@ variables:
   climate: !input climate
   target_temperature_stop: !input target_temperature_stop
   window: !input window
+  window_delay: !input window_delay
   home_modus: !input home_modus
 
 trigger:
@@ -217,7 +227,7 @@ trigger:
   - platform: state
     entity_id: !input window
     for:
-      seconds: 30
+      seconds: !input window_delay
     id: window
   - platform: state
     entity_id: !input home_modus
