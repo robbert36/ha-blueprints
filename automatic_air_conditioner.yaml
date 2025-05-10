@@ -114,6 +114,9 @@ blueprint:
       selector:
         number:
           min: 0
+          max: 3600
+          unit_of_measurement: s
+          mode: slider
           step: 1
 
     target_temperature_start:
