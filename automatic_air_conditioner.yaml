@@ -105,7 +105,6 @@ blueprint:
       selector:
         entity:
           domain: binary_sensor
-          device_class: window
 
     window_delay:
       name: Window Delay
